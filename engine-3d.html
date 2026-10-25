@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIGF v4.0 Tri-Axial 3D Engine Simulator — Runtime Control-Plane</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Three.js & OrbitControls -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+  :root {
+    --bg-dark: #0b0d11;
+    --card-bg: #141720;
+    --panel-bg: #0f1218;
+    --border-color: #222736;
+    --text-main: #f0f2f5;
+    --text-muted: #8b949e;
+    --accent-blue: #58a6ff;
+    --accent-purple: #bc8cff;
+    --accent-green: #3fb950;
+    --accent-red: #f85149;
+    --accent-yellow: #d29922;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  header {
+    width: 100%;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--card-bg);
+    z-index: 10;
+  }
+
+  .logo-area h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-area h1 span {
+    font-size: 11.5px;
+    background: rgba(188, 140, 255, 0.15);
+    color: var(--accent-purple);
+    border: 1px solid rgba(188, 140, 255, 0.3);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  .logo-area p {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .license-badge {
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px solid rgba(88, 166, 255, 0.25);
+    color: var(--accent-blue);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .main-container {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    height: calc(100vh - 73px);
+  }
+
+  @media (max-width: 950px) {
+    .main-container {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+  }
+
+  .sidebar {
+    background: var(--card-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow-y: auto;
+    max-height: calc(100vh - 73px);
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+  }
+
+  .control-label {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .control-value {
+    color: var(--accent-blue);
+    font-weight: 600;
+    font-family: monospace;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent-blue);
+    cursor: pointer;
+    background: #1f2430;
+    height: 6px;
+    border-radius: 3px;
+  }
+
+  select {
+    width: 100%;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  select:focus {
+    border-color: var(--accent-blue);
+  }
+
+  .output-box {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .status-banner {
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease;
+  }
+
+  .status-banner.pass {
+    background: rgba(63, 185, 80, 0.12);
+    border: 1px solid rgba(63, 185, 80, 0.35);
+    color: var(--accent-green);
+  }
+
+  .status-banner.halt {
+    background: rgba(248, 81, 73, 0.12);
+    border: 1px solid rgba(248, 81, 73, 0.35);
+    color: var(--accent-red);
+  }
+
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding-bottom: 6px;
+  }
+
+  .metric-label {
+    color: var(--text-muted);
+  }
+
+  .metric-val {
+    font-family: monospace;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+    background: radial-gradient(circle at center, #161a24 0%, #080a0e 100%);
+    overflow: hidden;
+  }
+
+  #webglCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .canvas-overlay-instructions {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(14, 17, 23, 0.85);
+    border: 1px solid var(--border-color);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .canvas-overlay-instructions strong {
+    color: var(--text-main);
+  }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1f6feb;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+  }
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-area">
+      <h1>BIGF v4.0 3D Tri-Axial Simulator <span>WebGL Engine</span></h1>
+      <p>Real-time Orthogonal State Vector & 403 Hard Halt Boundary Visualization</p>
+    </div>
+    <div class="license-badge">
+      CC BY-NC 4.0 Open Science
+      <small style="display:block; font-weight:400; color:var(--text-muted);">Erkki Laine • Zenodo</small>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Sidebar Controls -->
+    <div class="sidebar">
+      <div class="card-title">
+        <span>⚙️</span> Tri-Axial Parameters ($P = B + S + T$)
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span class="control-label">Business Impact (B-Axis, X)</span>
+          <span class="control-value" id="bVal">Tier-1 (Statutory)</span>
+        </div>
+        <select id="bSelect" onchange="updateSimulation()">
+          <option value="3">Tier-1: Core Banking / Statutory RTO &lt; 15 min</option>
+          <option value="2">Tier-2: Operational ERP / Standard SLA</option>
+          <option value="1">Tier-3: Non-Critical Internal Tooling</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span class="control-label">Situational State (S-Axis, Y)</span>
+          <span class="control-value" id="sVal">0.50</span>
+        </div>
+        <input type="range" id="sRange" min="0" max="1" step="0.05" value="0.5" oninput="updateSimulation()">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span class="control-label">Telemetry Trust Theta (T-Axis, Z)</span>
+          <span class="control-value" id="tVal">0.8500</span>
+        </div>
+        <input type="range" id="tRange" min="0.5" max="1.0" step="0.01" value="0.85" oninput="updateSimulation()">
+        <span style="font-size: 11px; color: var(--text-muted);">Hard Halt Threshold: theta &lt; 0.8000</span>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <span class="control-label">Cryptographic Proof & Master Data</span>
+          <span class="control-value" id="sigVal" style="color: var(--accent-green);">Ed25519 Validated</span>
+        </div>
+        <select id="sigSelect" onchange="updateSimulation()">
+          <option value="valid">Ed25519 Key Valid & Signed</option>
+          <option value="stale">Stale Master Data Timestamp</option>
+          <option value="invalid">Cryptographic Signature Mismatch</option>
+        </select>
+      </div>
+
+      <!-- Real-time Output Box -->
+      <div class="output-box">
+        <div id="statusBanner" class="status-banner pass">
+          <span id="statusTitle">AUTOMATED FAILOVER</span>
+          <span id="statusHttp">HTTP 200</span>
+        </div>
+
+        <div class="metric-row">
+          <span class="metric-label">Computed Authority Index:</span>
+          <span class="metric-val" id="authScore">1.8500</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Policy Gate Decision:</span>
+          <span class="metric-val" id="policyDecision" style="color: var(--accent-green);">PASS_ACTUATION</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Circuit Breaker State:</span>
+          <span class="metric-val" id="cbState" style="color: var(--accent-green);">CLOSED (HEALTHY)</span>
+        </div>
+
+        <button onclick="copyStateJSON()" class="w-full bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-white py-2 rounded-lg text-xs font-semibold transition-colors mt-2">
+          📋 Copy Canonical Decision Record (CDR)
+        </button>
+      </div>
+    </div>
+
+    <!-- 3D Canvas Area -->
+    <div class="canvas-wrapper">
+      <canvas id="webglCanvas"></canvas>
+      <div class="canvas-overlay-instructions">
+        <span><strong>Interactive 3D Viewport</strong></span>
+        <span>• Click & Drag to Orbit / Rotate</span>
+        <span>• Scroll to Zoom In / Out</span>
+        <span>• Glowing Plane = 403 Hard Halt Threshold (&theta; = 0.8000)</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Canonical Decision Record copied to clipboard!</div>
+
+<script>
+// --- Three.js 3D Tri-Axial Visualization Setup ---
+let scene, camera, renderer, controls;
+let stateSphere, stateLineX, stateLineY, stateLineZ, thresholdPlane;
+let labelSprites = [];
+
+const canvas = document.getElementById('webglCanvas');
+
+function init3D() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0b0d11, 0.035);
+
+  camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+  camera.position.set(7, 5, 8);
+
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.maxDistance = 30;
+  controls.minDistance = 3;
+
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0x58a6ff, 1.2);
+  dirLight.position.set(10, 20, 15);
+  scene.add(dirLight);
+
+  const pointLight = new THREE.PointLight(0xbc8cff, 2, 20);
+  pointLight.position.set(0, 5, 0);
+  scene.add(pointLight);
+
+  buildCoordinateAxes();
+  buildThresholdPlane();
+  buildStateVectorObjects();
+
+  window.addEventListener('resize', onWindowResize);
+  animate3D();
+}
+
+function buildCoordinateAxes() {
+  const axesGroup = new THREE.Group();
+  const axisLength = 4.5;
+
+  // B-Axis (X) - Red/Orange
+  const bMat = new THREE.LineBasicMaterial({ color: 0xf85149, linewidth: 2 });
+  const bGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-axisLength, 0, 0), new THREE.Vector3(axisLength, 0, 0)]);
+  axesGroup.add(new THREE.Line(bGeo, bMat));
+
+  // S-Axis (Y) - Green
+  const sMat = new THREE.LineBasicMaterial({ color: 0x3fb950, linewidth: 2 });
+  const sGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axisLength, 0)]);
+  axesGroup.add(new THREE.Line(sGeo, sMat));
+
+  // T-Axis (Z) - Blue
+  const tMat = new THREE.LineBasicMaterial({ color: 0x58a6ff, linewidth: 2 });
+  const tGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -axisLength), new THREE.Vector3(0, 0, axisLength)]);
+  axesGroup.add(new THREE.Line(tGeo, tMat));
+
+  // Grid Helper on floor (S=0 plane)
+  const grid = new THREE.GridHelper(9, 9, 0x30363d, 0x1f2430);
+  grid.position.y = -2;
+  axesGroup.add(grid);
+
+  scene.add(axesGroup);
+}
+
+function buildThresholdPlane() {
+  // Threshold plane at Theta = 0.8000 mapped coordinate
+  // Theta [0.5, 1.0] maps to Z [-2, 2]. Theta 0.80 maps to Z = 0.4
+  const planeGeo = new THREE.PlaneGeometry(5, 5);
+  const planeMat = new THREE.MeshBasicMaterial({
+    color: 0xf85149,
+    transparent: true,
+    opacity: 0.18,
+    side: THREE.DoubleSide,
+    wireframe: false
+  });
+
+  thresholdPlane = new THREE.Mesh(planeGeo, planeMat);
+  thresholdPlane.rotation.x = Math.PI / 2;
+  scene.add(thresholdPlane);
+
+  // Wireframe border for the threshold plane
+  const wireGeo = new THREE.EdgesGeometry(planeGeo);
+  const wireMat = new THREE.LineBasicMaterial({ color: 0xf85149, transparent: true, opacity: 0.5 });
+  const wireFrame = new THREE.LineSegments(wireGeo, wireMat);
+  thresholdPlane.add(wireFrame);
+}
+
+function buildStateVectorObjects() {
+  // Glowing state sphere representing operational vector P = B + S + T
+  const sphereGeo = new THREE.SphereGeometry(0.2, 32, 32);
+  const sphereMat = new THREE.MeshStandardMaterial({
+    color: 0x3fb950,
+    emissive: 0x238636,
+    emissiveIntensity: 0.8,
+    roughness: 0.2
+  });
+  stateSphere = new THREE.Mesh(sphereGeo, sphereMat);
+  scene.add(stateSphere);
+
+  // Projection lines from state point to axes
+  const lineMatX = new THREE.LineDashedMaterial({ color: 0x8b949e, dashSize: 0.1, gapSize: 0.05, transparent: true, opacity: 0.5 });
+  
+  const geom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
+  stateLineX = new THREE.Line(geom, lineMatX);
+  stateLineY = new THREE.Line(geom.clone(), lineMatX);
+  stateLineZ = new THREE.Line(geom.clone(), lineMatX);
+  scene.add(stateLineX);
+  scene.add(stateLineY);
+  scene.add(stateLineZ);
+}
+
+function update3DState(bTier, sVal, tVal, isHalted) {
+  // Map parameters to 3D coordinates (-2 to +2 range)
+  // B-Axis (X): Tier 1..3 -> -1.5, 0, 1.5
+  const x = (bTier - 2) * 1.5;
+  // S-Axis (Y): 0..1 -> -1.5 to 1.5
+  const y = (sVal - 0.5) * 3.0;
+  // T-Axis (Z): 0.5..1.0 -> -2.0 to 2.0. Threshold Theta 0.80 maps to Z = 0.4
+  const z = ((tVal - 0.75) / 0.25) * 2.0;
+
+  // Position threshold plane according to theta = 0.80 mapping
+  const thresholdZ = ((0.80 - 0.75) / 0.25) * 2.0;
+  thresholdPlane.position.set(0, 0, thresholdZ);
+
+  // Smoothly move state sphere
+  stateSphere.position.set(x, y, z);
+
+  // Update sphere color based on Hard Halt status
+  if (isHalted) {
+    stateSphere.material.color.setHex(0xf85149);
+    stateSphere.material.emissive.setHex(0xda3633);
+  } else {
+    stateSphere.material.color.setHex(0x3fb950);
+    stateSphere.material.emissive.setHex(0x238636);
+  }
+
+  // Update projection lines
+  updateLinePoints(stateLineX, new THREE.Vector3(x, y, z), new THREE.Vector3(x, 0, 0));
+  updateLinePoints(stateLineY, new THREE.Vector3(x, y, z), new THREE.Vector3(0, y, 0));
+  updateLinePoints(stateLineZ, new THREE.Vector3(x, y, z), new THREE.Vector3(0, 0, z));
+}
+
+function updateLinePoints(lineObj, vStart, vEnd) {
+  const geom = new THREE.BufferGeometry().setFromPoints([vStart, vEnd]);
+  lineObj.geometry.dispose();
+  lineObj.geometry = geom;
+  lineObj.computeLineDistances();
+}
+
+function onWindowResize() {
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+
+function animate3D() {
+  requestAnimationFrame(animate3D);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// --- Simulation Logic & UI Integration ---
+let currentSimState = {};
+
+function updateSimulation() {
+  const bTier = parseInt(document.getElementById('bSelect').value);
+  const sVal = parseFloat(document.getElementById('sRange').value);
+  const tVal = parseFloat(document.getElementById('tRange').value);
+  const sigState = document.getElementById('sigSelect').value;
+
+  const bTexts = { "3": "Tier-1 (Statutory)", "2": "Tier-2 (ERP)", "1": "Tier-3 (Internal)" };
+  document.getElementById('bVal').textContent = bTexts[bTier];
+  document.getElementById('sVal').textContent = sVal.toFixed(2);
+  document.getElementById('tVal').textContent = tVal.toFixed(4);
+
+  const sigColors = { valid: "var(--accent-green)", stale: "var(--accent-yellow)", invalid: "var(--accent-red)" };
+  const sigLabels = { valid: "Ed25519 Validated", stale: "Stale Timestamp Detected", invalid: "Signature Mismatch" };
+  document.getElementById('sigVal').style.color = sigColors[sigState];
+  document.getElementById('sigVal').textContent = sigLabels[sigState];
+
+  const authorityScore = (bTier * 0.5) + (sVal * 0.5) + tVal;
+  document.getElementById('authScore').textContent = authorityScore.toFixed(4);
+
+  const banner = document.getElementById('statusBanner');
+  const statusTitle = document.getElementById('statusTitle');
+  const statusHttp = document.getElementById('statusHttp');
+  const policyDecision = document.getElementById('policyDecision');
+  const cbState = document.getElementById('cbState');
+
+  let isHalted = false;
+  let haltReason = "";
+
+  if (sigState === "invalid") {
+    isHalted = true;
+    haltReason = "Cryptographic signature validation failed against trust root.";
+  } else if (sigState === "stale") {
+    isHalted = true;
+    haltReason = "Master data timestamp exceeded operational TTL limit.";
+  } else if (tVal < 0.8000) {
+    isHalted = true;
+    haltReason = "Telemetry trust index below mandatory theta threshold (0.8000).";
+  }
+
+  const timestampIso = new Date().toISOString();
+
+  if (isHalted) {
+    banner.className = "status-banner halt";
+    statusTitle.textContent = "403 HARD HALT TRIGGERED";
+    statusHttp.textContent = "HTTP 403";
+    policyDecision.textContent = "BLOCK_AND_ISOLATE";
+    policyDecision.style.color = "var(--accent-red)";
+    cbState.textContent = "TRIPPED (OPEN)";
+    cbState.style.color = "var(--accent-red)";
+
+    currentSimState = {
+      timestamp: timestampIso,
+      version: "BIGF-v4.0-NC",
+      evaluation: "HARD_HALT",
+      b_tier: bTier,
+      situational_state_s: sVal,
+      telemetry_theta: tVal,
+      signature_status: sigState,
+      action: "REJECT_ACTUATION",
+      reason: haltReason
+    };
+  } else {
+    banner.className = "status-banner pass";
+    statusTitle.textContent = "AUTOMATED FAILOVER";
+    statusHttp.textContent = "HTTP 200";
+    policyDecision.textContent = "PASS_ACTUATION";
+    policyDecision.style.color = "var(--accent-green)";
+    cbState.textContent = "CLOSED (HEALTHY)";
+    cbState.style.color = "var(--accent-green)";
+
+    currentSimState = {
+      timestamp: timestampIso,
+      version: "BIGF-v4.0-NC",
+      evaluation: "SUCCESS",
+      b_tier: bTier,
+      situational_state_s: sVal,
+      telemetry_theta: tVal,
+      signature_status: sigState,
+      action: "EXECUTE_FAILOVER",
+      authority_score: parseFloat(authorityScore.toFixed(4))
+    };
+  }
+
+  // Update 3D scene visual state vector
+  if (scene) {
+    update3DState(bTier, sVal, tVal, isHalted);
+  }
+}
+
+function copyStateJSON() {
+  const jsonString = JSON.stringify(currentSimState, null, 2);
+  document.execCommand ? copyLegacy(jsonString) : navigator.clipboard.writeText(jsonString).then(showToast);
+}
+
+function copyLegacy(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    showToast();
+  } catch (err) {
+    console.error('Copy failed', err);
+  }
+  document.body.removeChild(textarea);
+}
+
+function showToast() {
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2500);
+}
+
+// Start Three.js on window load
+window.onload = function() {
+  init3D();
+  updateSimulation();
+};
+</script>
+</body>
+</html>
