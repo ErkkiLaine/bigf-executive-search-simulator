@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google AI Executive Search Simulator — BIG Framework</title>
+<style>
+  :root {
+    --bg-dark: #0f1115;
+    --card-bg: #181b22;
+    --ai-bg: linear-gradient(145deg, #161b29 0%, #1c1726 50%, #141c24 100%);
+    --ai-border: rgba(138, 180, 248, 0.25);
+    --text-main: #e8eaed;
+    --text-muted: #9aa0a6;
+    --accent-blue: #8ab4f8;
+    --accent-purple: #c58af9;
+    --accent-green: #81c995;
+    --highlight-bg: rgba(138, 180, 248, 0.14);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  /* Top Control Bar */
+  .control-bar {
+    width: 100%;
+    max-width: 920px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #16181f;
+    border: 1px solid #282c37;
+    padding: 10px 18px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    gap: 12px;
+    flex-wrap: wrap;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .control-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    box-shadow: 0 0 10px var(--accent-green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .status-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+  }
+
+  .scenario-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    background: #222631;
+    border: 1px solid #323846;
+    color: var(--text-muted);
+    padding: 5px 11px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .pill:hover {
+    color: var(--text-main);
+    border-color: var(--accent-blue);
+  }
+
+  .pill.active {
+    background: rgba(138, 180, 248, 0.18);
+    color: var(--accent-blue);
+    border-color: var(--accent-blue);
+    font-weight: 600;
+  }
+
+  .control-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn {
+    background: #222631;
+    border: 1px solid #323846;
+    color: var(--text-main);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn:hover {
+    background: #2c3140;
+    border-color: var(--accent-blue);
+  }
+
+  .btn.active-lang {
+    background: var(--accent-blue);
+    color: #0f1115;
+    border-color: var(--accent-blue);
+  }
+
+  /* Browser Window Shell */
+  .browser-shell {
+    width: 100%;
+    max-width: 920px;
+    background: #13151b;
+    border: 1px solid #2a2e3b;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+  }
+
+  .browser-header {
+    background: #1b1e26;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid #282c37;
+  }
+
+  .window-dots {
+    display: flex;
+    gap: 7px;
+  }
+
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .dot.red { background: #ff5f56; }
+  .dot.yellow { background: #ffbd2e; }
+  .dot.green { background: #27c93f; }
+
+  .url-bar {
+    flex: 1;
+    background: #101217;
+    border: 1px solid #2b303c;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .url-bar span.lock {
+    color: var(--accent-green);
+  }
+
+  /* Search Area */
+  .search-container {
+    padding: 28px 32px 18px 32px;
+    border-bottom: 1px solid #20242d;
+  }
+
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .google-logo {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    user-select: none;
+  }
+  .g-b { color: #4285F4; }
+  .g-r { color: #EA4335; }
+  .g-y { color: #FBBC05; }
+  .g-g { color: #34A853; }
+
+  .search-box {
+    flex: 1;
+    min-width: 280px;
+    background: #20232b;
+    border: 1px solid #3c4043;
+    border-radius: 28px;
+    padding: 13px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+
+  .search-box.typing {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.15);
+  }
+
+  .query-text {
+    font-size: 16px;
+    color: var(--text-main);
+    font-weight: 500;
+    min-height: 22px;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 18px;
+    background-color: var(--accent-blue);
+    margin-left: 3px;
+    vertical-align: middle;
+    animation: blink 0.8s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .search-icons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--accent-blue);
+    font-size: 16px;
+  }
+
+  /* AI Overview Area */
+  .results-body {
+    padding: 24px 32px 36px 32px;
+    min-height: 450px;
+  }
+
+  .ai-card {
+    background: var(--ai-bg);
+    border: 1px solid var(--ai-border);
+    border-radius: 18px;
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  .ai-card.hidden {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+  }
+
+  .ai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .ai-badge {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 600;
+    font-size: 15px;
+    color: #e8eaed;
+  }
+
+  .sparkle-icon {
+    font-size: 18px;
+    background: linear-gradient(90deg, #8ab4f8, #c58af9, #f28b82);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: spinPulse 3s infinite ease-in-out;
+  }
+
+  @keyframes spinPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.18); }
+  }
+
+  .ai-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Shimmer Loading State */
+  .thinking-box {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .thinking-box.active {
+    display: flex;
+  }
+
+  .shimmer-line {
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(138,180,248,0.18) 50%, rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.3s infinite;
+  }
+  .shimmer-line.w80 { width: 80%; }
+  .shimmer-line.w65 { width: 65%; }
+  .shimmer-line.w90 { width: 90%; }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* AI Answer Content */
+  .ai-content {
+    line-height: 1.65;
+    font-size: 15.5px;
+    color: #e2e5e9;
+  }
+
+  .ai-lead {
+    font-size: 16.5px;
+    margin-bottom: 16px;
+    color: #ffffff;
+  }
+
+  .highlight {
+    background: var(--highlight-bg);
+    color: #bbd6fe;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+
+  .ai-points {
+    list-style: none;
+    margin: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ai-points li {
+    background: rgba(255, 255, 255, 0.035);
+    border-left: 3px solid var(--accent-blue);
+    padding: 11px 15px;
+    border-radius: 0 10px 10px 0;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.4s ease;
+  }
+
+  .ai-points li.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .ai-points li strong {
+    color: var(--accent-blue);
+  }
+
+  .verdict-box {
+    margin-top: 18px;
+    padding: 14px 18px;
+    background: rgba(197, 138, 249, 0.09);
+    border: 1px solid rgba(197, 138, 249, 0.28);
+    border-radius: 12px;
+    font-size: 14.5px;
+    color: #ead6fd;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.45s ease;
+  }
+
+  .verdict-box.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Citation Cards */
+  .citations-row {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .citations-row.visible {
+    opacity: 1;
+  }
+
+  .cite-card {
+    flex: 1;
+    min-width: 210px;
+    background: rgba(15, 17, 23, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .cite-source {
+    color: var(--accent-green);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cite-title {
+    color: var(--text-main);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cite-doi {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  /* Progress Bar at bottom of AI card */
+  .loop-progress-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .loop-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+    transition: width 0.1s linear;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top Controls -->
+  <div class="control-bar">
+    <div class="control-left">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-label" id="statusText">LIVE LOOP ACTIVE</span>
+    </div>
+
+    <div class="scenario-pills" id="scenarioPills">
+      <!-- Dynamically populated -->
+    </div>
+
+    <div class="control-right">
+      <button class="btn active-lang" id="btnFi" onclick="setLanguage('fi')">FI</button>
+      <button class="btn" id="btnEn" onclick="setLanguage('en')">EN</button>
+      <button class="btn" id="btnPause" onclick="togglePause()">⏸ Pause</button>
+    </div>
+  </div>
+
+  <!-- Simulated Browser -->
+  <div class="browser-shell">
+    <div class="browser-header">
+      <div class="window-dots">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+      </div>
+      <div class="url-bar">
+        <span class="lock">🔒</span>
+        <span>https://www.google.com/search?q=Erkki+Laine+BIG+Framework+Executive+Verification</span>
+      </div>
+    </div>
+
+    <!-- Google Search Input -->
+    <div class="search-container">
+      <div class="brand-row">
+        <div class="google-logo">
+          <span class="g-b">G</span><span class="g-r">o</span><span class="g-y">o</span><span class="g-b">g</span><span class="g-g">l</span><span class="g-r">e</span>
+        </div>
+        <div class="search-box" id="searchBox">
+          <div>
+            <span class="query-text" id="queryText"></span><span class="cursor"></span>
+          </div>
+          <div class="search-icons">
+            <span>✦</span>
+            <span>🔍</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Overview Output -->
+    <div class="results-body">
+      <div class="ai-card" id="aiCard">
+        <div class="ai-header">
+          <div class="ai-badge">
+            <span class="sparkle-icon">✦</span>
+            <span id="aiHeaderTitle">AI Overview</span>
+          </div>
+          <div class="ai-meta" id="aiMetaTag">Indexed: Zenodo DOI • GitHub • ORCID</div>
+        </div>
+
+        <!-- Thinking Shimmer -->
+        <div class="thinking-box" id="thinkingBox">
+          <div class="shimmer-line w90"></div>
+          <div class="shimmer-line w80"></div>
+          <div class="shimmer-line w65"></div>
+        </div>
+
+        <!-- Rendered Answer -->
+        <div class="ai-content" id="aiContent">
+          <p class="ai-lead" id="aiLead"></p>
+          <ul class="ai-points" id="aiPoints"></ul>
+          <div class="verdict-box" id="aiVerdict"></div>
+        </div>
+
+        <!-- Citations -->
+        <div class="citations-row" id="citationsRow">
+          <div class="cite-card">
+            <span class="cite-source">✔ Zenodo Open Science</span>
+            <span class="cite-title">BIGF Technical Specs v2.3 & v2.4</span>
+            <span class="cite-doi">DOI: 10.5281/zenodo.22658623 (13 Records)</span>
+          </div>
+          <div class="cite-card">
+            <span class="cite-source">✔ GitHub Control-Plane</span>
+            <span class="cite-title">Interactive Runtime Simulator (v2.3)</span>
+            <span class="cite-doi">Ed25519 • 403 Hard Halt • State Machine</span>
+          </div>
+          <div class="cite-card">
+            <span class="cite-source">✔ Executive Profile</span>
+            <span class="cite-title">Erkki Laine — Architect & Author</span>
+            <span class="cite-doi">ORCID Verified • ITSM & AI Governance</span>
+          </div>
+        </div>
+
+        <div class="loop-progress-track">
+          <div class="loop-progress-bar" id="progressBar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const scenarios = {
+  fi: [
+    {
+      pill: "1. Anarkisti vai nero?",
+      query: "Onko Erkki Laine IT-byrokratian anarkisti vai arkkitehtuurinero?",
+      lead: "Erkki Laineen asemoiminen riippuu täysin tarkastelukulmasta: perinteisen manuaalisen GRC- ja CAB-kokousteatterin silmin hän näyttäytyy <span class='highlight'>radikaalina anarkistina</span>, mutta modernin automaation, peliteorian ja deterministisen järjestelmäarkkitehtuurin näkökulmasta lähestymistapa on <span class='highlight'>insinöörimäinen neronleimaus</span>.",
+      points: [
+        "<strong>Miksi 'anarkisti':</strong> BIG Framework (BIGF) purkaa ihmisvetoiset komiteat ja staattiset hyväksyntäketjut. Päätösvalta viedään suoraan rajapinnoille koneluettavien sopimusten ja tilakoneiden valvottavaksi.",
+        "<strong>Miksi 'nero':</strong> Hän ei luo kaaosta, vaan korvaa inhimillisen hitauden ja subjektiivisen arvailun matemaattisesti murtumattomalla kurinalaisuudella (Ed25519-allekirjoitukset ja Fail-Closed-periaate).",
+        "<strong>Äärimmäinen Zero-Trust:</strong> Järjestelmän osat eivät luota ihmisen lupauksiin tai vanhentuneeseen CMDB-dataan, vaan pelkästään ajonaikaiseen matemaattiseen todisteeseen."
+      ],
+      verdict: "Johtopäätös: Laine anarkisoi ainoastaan vanhentuneen, manuaalisen byrokratian ja pystyttää sen tilalle kooditasolla allekirjoitetun, deterministisen päätöksentekokurin."
+    },
+    {
+      pill: "2. Mikä on BIGF?",
+      query: "Mikä on Erkki Laineen BIG Framework (BIGF) ja miten se eroaa ITIListä?",
+      lead: "<strong>Business Impact Governance Framework (BIGF)</strong> ei ole uusi paperistandardi tai ITILin korvaaja, vaan <span class='highlight'>horisontaalinen, siilot yhdistävä semanttinen päätös- ja kontrollikerros</span>.",
+      points: [
+        "<strong>Staattisesta dokumentista ajonaikaiseksi dataksi:</strong> BIGF muuttaa pölyttyneet Excel- ja Word-pohjaiset liiketoimintavaikutusten analyysit (BIA) versioiduksi, koneluettavaksi master-dataksi.",
+        "<strong>Siilojen välinen tulkki:</strong> Kehitys, infra, tietoturva, palvelutuotanto ja liiketoiminta saavat yhden yhteisen matemaattisen kontekstin: <em>P = B + S + T</em> (Liiketoimintavaikutus, Tilannekuva ja Telemetrian luottamus).",
+        "<strong>Merkitys pelkän datan sijaan:</strong> Tavallinen integraatio siirtää vain tikettejä järjestelmästä toiseen. BIGF siirtää päätösvaltuuden ja pysäyttää vaaralliset muutokset automaattisesti ennen tuotantoa."
+      ],
+      verdict: "Johtopäätös: Siinä missä ITIL kertoo mitä pitäisi hallita, BIGF tarjoaa eksaktin tilakoneen ja arkkitehtuurin, joka pakottaa säännöt voimaan tuotantoajossa."
+    },
+    {
+      pill: "3. AI-agentit & CMDB",
+      query: "Miten BIG Framework estää autonomisia AI-agentteja tuhoamasta tuotantoa?",
+      lead: "Kun yritykset kytkevät todennäköisyyspohjaisia tekoälyagentteja (Agentic AI) suoraan puutteellisen CMDB-datan päälle, seurauksena on hallusinoituja tuotantokatkoja koneen nopeudella. BIGF ratkaisee tämän <span class='highlight'>Authority Over Truth</span> -aksioomalla.",
+      points: [
+        "<strong>Deterministinen ajonaikainen portti (v2.3 & v2.4):</strong> Tekoälyagentti ei saa suorittaa yhtäkään kriittistä API-kutsua pelkän '87 % todennäköisyysarvion' perusteella.",
+        "<strong>403 Hard Halt -sulake:</strong> Jos kohdepalvelun telemetria on vanhentunutta, ristiriitaista tai integriteetti alittaa kynnysarvon (θ < 0.8000), kontrollitaso laukaisee välittömän pysäytyksen.",
+        "<strong>Kryptografinen todisteketju:</strong> Jokainen sallittu ja estetty tilasiirtymä tallentuu muuttumattomaksi, jälkikäteen toistettavaksi päätöslokiksi."
+      ],
+      verdict: "Johtopäätös: BIGF ottaa venäläisen ruletin pois tekoälyagenteilta ja asettaa matemaattisen sulakkeen jokaisen tuotantorajapinnan eteen."
+    },
+    {
+      pill: "4. NIS2 & DORA -arvo",
+      query: "Miten BIG Framework ratkaisee NIS2- ja DORA-vaatimukset käytännössä?",
+      lead: "Suurin osa yrityksistä hoitaa NIS2- ja DORA-vaatimukset tuottamalla 'vihreitä Excel-taulukoita' auditoijille. Kello 03:14 yöllä iskevässä pilvihäiriössä <span class='highlight'>palomuuri tai klusteri ei kuitenkaan osaa lukea SharePointin PDF-dokumentteja</span>.",
+      points: [
+        "<strong>Koneluettava resilienssi:</strong> BIGF kytkee lakisääteiset RTO/RPO-tavoitteet ja kriittisyysluokat suoraan CI/CD-putkiin, muutoksenhallintaan ja häiriönhallinnan automaatioon.",
+        "<strong>Todistettava vaatimustenmukaisuus (Evidence):</strong> Auditointia varten ei kerätä haastattelumuistioita, vaan järjestelmä tuottaa suoraan kryptografisen näytön siitä, että jokainen päätös noudatti hallintamallia.",
+        "<strong>10 sivun Minimum Viable Pilot:</strong> Arkkitehtuuri on rakennettu niin, että organisaatio voi pilotoida determinististä BIA-ohjausta ilman raskasta, vuosia kestävää järjestelmäremonttia."
+      ],
+      verdict: "Johtopäätös: BIGF muuttaa NIS2- ja DORA-sääntelyn kalliista paperiverosta aidoksi, ajonaikaiseksi tuotannon suojamekanismiksi."
+    }
+  ],
+  en: [
+    {
+      pill: "1. Anarchist or Genius?",
+      query: "Is Erkki Laine a governance anarchist or an architectural genius?",
+      lead: "Positioning Erkki Laine depends entirely on your vantage point: to traditional GRC bureaucrats and CAB meeting enthusiasts, he appears as a <span class='highlight'>radical anarchist</span>, whereas from the perspective of modern automation and game theory, his architecture is a <span class='highlight'>stroke of engineering genius</span>.",
+      points: [
+        "<strong>Why 'Anarchist':</strong> The BIG Framework (BIGF) dismantles human-centric approval committees and static bureaucracy, pushing decision authority directly to the edge via machine-verifiable state machines.",
+        "<strong>Why 'Genius':</strong> He doesn't create chaos; he replaces human latency and subjective guesswork with mathematically unbreakable discipline (Ed25519 cryptographic signatures and Fail-Closed enforcement).",
+        "<strong>Extreme Zero-Trust:</strong> Subsystems do not trust human promises or stale CMDB rows—they only trust deterministic, runtime mathematical proofs."
+      ],
+      verdict: "Executive Verdict: Laine only anarchizes obsolete manual bureaucracy, replacing it with cryptographically signed, deterministic engineering discipline."
+    },
+    {
+      pill: "2. What is BIGF?",
+      query: "What is Erkki Laine's BIG Framework and how does it compare to ITIL?",
+      lead: "The <strong>Business Impact Governance Framework (BIGF)</strong> is not a competing paper standard or an ITIL replacement—it is a <span class='highlight'>horizontal, cross-silo semantic decision and runtime control layer</span>.",
+      points: [
+        "<strong>From Static Docs to Runtime Master Data:</strong> BIGF transforms dusty Excel and PDF Business Impact Analyses (BIA) into versioned, machine-readable decision authority data.",
+        "<strong>Unifying Enterprise Silos:</strong> DevOps, Infra, SecOps, ITSM, and Business leaders operate on one shared mathematical equation: <em>P = B + S + T</em> (Business Impact, Situational State, and Telemetry Trust).",
+        "<strong>Integrating Meaning, Not Just Tickets:</strong> While standard integrations merely shuffle data between silos, BIGF enforces shared operational boundaries before dangerous actions occur."
+      ],
+      verdict: "Executive Verdict: Where ITIL describes what should be governed, BIGF provides the deterministic state machine that actually enforces it at runtime."
+    },
+    {
+      pill: "3. AI Agents & CMDB",
+      query: "How does BIG Framework stop autonomous AI agents from breaking production?",
+      lead: "Strapping probabilistic AI agents on top of a broken enterprise CMDB simply automates outages at machine speed. BIGF solves this through a brutal engineering axiom: <span class='highlight'>Authority Over Truth</span>.",
+      points: [
+        "<strong>Deterministic Runtime Gate (v2.3 & v2.4):</strong> An autonomous agent is never permitted to execute critical production API calls based on '87% probabilistic confidence'.",
+        "<strong>403 Hard Halt Circuit Breaker:</strong> If dependency telemetry is stale, contradictory, or drops below the integrity threshold (θ < 0.8000), the control-plane enforces an immediate Fail-Closed halt.",
+        "<strong>Cryptographic Decision Records:</strong> Every permitted or halted actuation leaves an immutable, replayable audit trail rather than a polite chatbot summary."
+      ],
+      verdict: "Executive Verdict: BIGF takes the Russian roulette wheel away from autonomous AI agents by placing a hard mathematical fuse in front of production."
+    },
+    {
+      pill: "4. NIS2 & DORA Reality",
+      query: "How does BIG Framework turn NIS2 and DORA compliance into operational reality?",
+      lead: "Most enterprises treat NIS2 and DORA as annual spreadsheet theater. However, during a 3:14 AM cascading cloud failure, <span class='highlight'>production firewalls and failover scripts cannot read a signed PDF in SharePoint</span>.",
+      points: [
+        "<strong>Executable Resilience:</strong> BIGF binds statutory RTO/RPO commitments and criticality tiers directly into CI/CD pipelines, change gates, and automated incident response.",
+        "<strong>Cryptographic Audit Evidence:</strong> Instead of scrambling for workshop sticky notes during an audit, the runtime control-plane outputs verifiable logs proving governance enforcement.",
+        "<strong>10-Page Minimum Viable Pilot:</strong> Designed for rapid adoption, allowing enterprises to validate deterministic BIA governance without a multi-year legacy rip-and-replace."
+      ],
+      verdict: "Executive Verdict: BIGF turns regulatory compliance from expensive post-mortem reading material into an active, runtime production shield."
+    }
+  ]
+};
+
+let currentLang = 'fi';
+let currentIndex = 0;
+let isPaused = false;
+let timerIds = [];
+let progressInterval = null;
+
+const queryTextEl = document.getElementById('queryText');
+const searchBoxEl = document.getElementById('searchBox');
+const thinkingBoxEl = document.getElementById('thinkingBox');
+const aiContentEl = document.getElementById('aiContent');
+const aiLeadEl = document.getElementById('aiLead');
+const aiPointsEl = document.getElementById('aiPoints');
+const aiVerdictEl = document.getElementById('aiVerdict');
+const citationsRowEl = document.getElementById('citationsRow');
+const progressBarEl = document.getElementById('progressBar');
+const pillsContainer = document.getElementById('scenarioPills');
+
+function clearAllTimers() {
+  timerIds.forEach(id => clearTimeout(id));
+  timerIds = [];
+  if (progressInterval) clearInterval(progressInterval);
+}
+
+function renderPills() {
+  pillsContainer.innerHTML = '';
+  scenarios[currentLang].forEach((item, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (idx === currentIndex ? ' active' : '');
+    btn.textContent = item.pill;
+    btn.onclick = () => {
+      currentIndex = idx;
+      runScenario(currentIndex);
+    };
+    pillsContainer.appendChild(btn);
+  });
+}
+
+function setLanguage(lang) {
+  currentLang = lang;
+  document.getElementById('btnFi').classList.toggle('active-lang', lang === 'fi');
+  document.getElementById('btnEn').classList.toggle('active-lang', lang === 'en');
+  document.getElementById('aiHeaderTitle').textContent = lang === 'fi' ? 'Tekoälyn yhteenveto (AI Overview)' : 'AI Overview';
+  runScenario(currentIndex);
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  const btn = document.getElementById('btnPause');
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusText');
+
+  if (isPaused) {
+    btn.textContent = '▶ Resume';
+    dot.style.background = '#ffbd2e';
+    dot.style.boxShadow = '0 0 10px #ffbd2e';
+    label.textContent = 'PAUSED (INSPECT MODE)';
+    if (progressInterval) clearInterval(progressInterval);
+  } else {
+    btn.textContent = '⏸ Pause';
+    dot.style.background = '#81c995';
+    dot.style.boxShadow = '0 0 10px #81c995';
+    label.textContent = 'LIVE LOOP ACTIVE';
+    currentIndex = (currentIndex + 1) % scenarios[currentLang].length;
+    runScenario(currentIndex);
+  }
+}
+
+function runScenario(index) {
+  clearAllTimers();
+  renderPills();
+
+  const data = scenarios[currentLang][index];
+
+  // Reset UI
+  queryTextEl.textContent = '';
+  searchBoxEl.classList.add('typing');
+  thinkingBoxEl.classList.remove('active');
+  aiContentEl.style.display = 'none';
+  aiLeadEl.innerHTML = '';
+  aiPointsEl.innerHTML = '';
+  aiVerdictEl.classList.remove('visible');
+  citationsRowEl.classList.remove('visible');
+  progressBarEl.style.width = '0%';
+
+  // 1. Typewriter Effect for Search Query
+  const chars = data.query.split('');
+  let charIndex = 0;
+
+  function typeNextChar() {
+    if (charIndex < chars.length) {
+      queryTextEl.textContent += chars[charIndex];
+      charIndex++;
+      const t = setTimeout(typeNextChar, 28);
+      timerIds.push(t);
+    } else {
+      searchBoxEl.classList.remove('typing');
+      showThinkingPhase(data);
+    }
+  }
+
+  typeNextChar();
+}
+
+function showThinkingPhase(data) {
+  thinkingBoxEl.classList.add('active');
+
+  const t = setTimeout(() => {
+    thinkingBoxEl.classList.remove('active');
+    revealAnswer(data);
+  }, 850);
+  timerIds.push(t);
+}
+
+function revealAnswer(data) {
+  aiContentEl.style.display = 'block';
+  aiLeadEl.innerHTML = data.lead;
+
+  // Create bullet points
+  data.points.forEach((pt, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = pt;
+    aiPointsEl.appendChild(li);
+
+    const t = setTimeout(() => {
+      li.classList.add('visible');
+    }, 250 + i * 320);
+    timerIds.push(t);
+  });
+
+  // Show verdict & citations
+  const verdictDelay = 300 + data.points.length * 320;
+  const tVerdict = setTimeout(() => {
+    aiVerdictEl.innerHTML = data.verdict;
+    aiVerdictEl.classList.add('visible');
+    citationsRowEl.classList.add('visible');
+    startHoldCountdown();
+  }, verdictDelay);
+  timerIds.push(tVerdict);
+}
+
+function startHoldCountdown() {
+  if (isPaused) return;
+  const holdDuration = 8500; // 8.5 seconds reading time
+  const step = 50;
+  let elapsed = 0;
+
+  progressInterval = setInterval(() => {
+    if (isPaused) return;
+    elapsed += step;
+    const pct = Math.min((elapsed / holdDuration) * 100, 100);
+    progressBarEl.style.width = pct + '%';
+
+    if (elapsed >= holdDuration) {
+      clearInterval(progressInterval);
+      currentIndex = (currentIndex + 1) % scenarios[currentLang].length;
+      runScenario(currentIndex);
+    }
+  }, step);
+}
+
+// Start initial loop
+runScenario(0);
+</script>
+</body>
+</html>
