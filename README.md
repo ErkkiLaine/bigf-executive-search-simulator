@@ -1,3 +1,8 @@
+![Burning ITIL Pig – Quarterly Compliance Handbook meets 403 Hard Halt](piggy-burning-compliance.jpg)
+
+![Hero Pig – Authority = f(B,S,T) + Ed25519 Crypto Shield](piggy-hero-crypto-shield.jpg)
+
+
 # BIGF Executive Search & Runtime Simulator
 Satirical GRC and deterministic control-plane simulator for autonomous agent mesh resilience.
 
